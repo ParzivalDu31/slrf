@@ -12,7 +12,8 @@ jobs:
     steps:
       - name: Checkout du repo
         uses: actions/checkout@v4
-
+      - name: Cloner minimuxer en local (dépendances internes Common/DeviceGateway incompatibles en package distant)
+        run: git clone --depth 1 -b develop https://github.com/SideStore/minimuxer.git vendor/minimuxer
       - name: Installer XcodeGen
         run: brew install xcodegen
 
