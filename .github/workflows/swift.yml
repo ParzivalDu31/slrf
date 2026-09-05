@@ -1,22 +1,48 @@
-# This workflow will build a Swift project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
-
-name: Swift
+name: Build IPA
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-
-    runs-on: macos-latest
+    runs-on: macos-26
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: swift build -v
-    - name: Run tests
-      run: swift test -v
+      - name: Checkout du repo
+        uses: actions/checkout@v4
+
+      - name: Installer XcodeGen
+        run: brew install xcodegen
+
+      - name: Générer le .xcodeproj à partir de project.yml
+        run: xcodegen generate
+
+      - name: Afficher les versions Xcode disponibles (utile pour debug)
+        run: xcodebuild -showsdks
+
+      - name: Build .app SANS signature de code
+        run: |
+          xcodebuild archive \
+            -project SideloadlyRefresher.xcodeproj \
+            -scheme SideloadlyRefresher \
+            -archivePath build/SideloadlyRefresher.xcarchive \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Empaqueter en .ipa (structure Payload/ requise par Sideloadly)
+        run: |
+          cd build/SideloadlyRefresher.xcarchive/Products/Applications
+          mkdir Payload
+          mv *.app Payload/
+          zip -r ../../../../SideloadlyRefresher.ipa Payload
+
+      - name: Publier le .ipa comme artifact téléchargeable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SideloadlyRefresher-ipa
+          path: SideloadlyRefresher.ipa
