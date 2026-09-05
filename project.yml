@@ -30,8 +30,7 @@ targets:
 
 packages:
   Minimuxer:
-    url: https://github.com/SideStore/minimuxer.git
-    branch: develop
+    path: vendor/minimuxer
   AltSign:
     url: https://github.com/SideStore/AltSign.git
     branch: develop
