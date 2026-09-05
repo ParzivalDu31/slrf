@@ -33,4 +33,4 @@ packages:
     path: vendor/minimuxer
   AltSign:
     url: https://github.com/SideStore/AltSign.git
-    branch: develop
+    branch: feature/swiftpm
