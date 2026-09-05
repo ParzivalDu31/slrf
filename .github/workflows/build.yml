@@ -25,9 +25,13 @@ jobs:
       - name: Afficher les versions Xcode disponibles (utile pour debug)
         run: xcodebuild -showsdks
 
-      - name: Résoudre les dépendances SPM séparément (évite un bug de concurrence connu de SwiftPM)
+      - name: Résoudre les dépendances SPM (2 essais, contourne un bug de concurrence connu de SwiftPM)
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts
+          xcodebuild -resolvePackageDependencies \
+            -project SideloadlyRefresher.xcodeproj \
+            -scheme SideloadlyRefresher \
+            -sdk iphoneos || true
           xcodebuild -resolvePackageDependencies \
             -project SideloadlyRefresher.xcodeproj \
             -scheme SideloadlyRefresher \
