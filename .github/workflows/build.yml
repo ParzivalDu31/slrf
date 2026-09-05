@@ -22,7 +22,8 @@ jobs:
 
       - name: Afficher les versions Xcode disponibles (utile pour debug)
         run: xcodebuild -showsdks
-
+      - name: Nettoyer le cache SPM (évite les conflits de cache connus sur les runners GitHub)
+        run: rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts
       - name: Build .app SANS signature de code
         run: |
           xcodebuild archive \
