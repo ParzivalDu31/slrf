@@ -12,8 +12,10 @@ jobs:
     steps:
       - name: Checkout du repo
         uses: actions/checkout@v4
+
       - name: Cloner minimuxer en local (dépendances internes Common/DeviceGateway incompatibles en package distant)
         run: git clone --depth 1 -b develop https://github.com/SideStore/minimuxer.git vendor/minimuxer
+
       - name: Installer XcodeGen
         run: brew install xcodegen
 
@@ -22,8 +24,73 @@ jobs:
 
       - name: Afficher les versions Xcode disponibles (utile pour debug)
         run: xcodebuild -showsdks
-      - name: Nettoyer le cache SPM (évite les conflits de cache connus sur les runners GitHub)
-        run: rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts
+
+      - name: Résoudre les dépendances SPM séparément (évite un bug de concurrence connu de SwiftPM)
+        run: |
+          rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts
+          xcodebuild -resolvePackageDependencies \
+            -project SideloadlyRefresher.xcodeproj \
+            -scheme SideloadlyRefresher \
+            -sdk iphoneos
+
+      - name: Build .app SANS signature de code
+        run: |
+          xcodebuild archive \
+            -project SideloadlyRefresher.xcodeproj \
+            -scheme SideloadlyRefresher \
+            -archivePath build/SideloadlyRefresher.xcarchive \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Empaqueter en .ipa (structure Payload/ requise par Sideloadly)
+        run: |
+          cd build/SideloadlyRefresher.xcarchive/Products/Applications
+          mkdir Payload
+          mv *.app Payload/
+          zip -r ../../../../SideloadlyRefresher.ipa Payload
+
+      - name: Publier le .ipa comme artifact téléchargeable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SideloadlyRefresher-ipa
+          path: SideloadlyRefresher.ipaname: Build IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout du repo
+        uses: actions/checkout@v4
+
+      - name: Cloner minimuxer en local (dépendances internes Common/DeviceGateway incompatibles en package distant)
+        run: git clone --depth 1 -b develop https://github.com/SideStore/minimuxer.git vendor/minimuxer
+
+      - name: Installer XcodeGen
+        run: brew install xcodegen
+
+      - name: Générer le .xcodeproj à partir de project.yml
+        run: xcodegen generate
+
+      - name: Afficher les versions Xcode disponibles (utile pour debug)
+        run: xcodebuild -showsdks
+
+      - name: Résoudre les dépendances SPM séparément (évite un bug de concurrence connu de SwiftPM)
+        run: |
+          rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts
+          xcodebuild -resolvePackageDependencies \
+            -project SideloadlyRefresher.xcodeproj \
+            -scheme SideloadlyRefresher \
+            -sdk iphoneos
+
       - name: Build .app SANS signature de code
         run: |
           xcodebuild archive \
