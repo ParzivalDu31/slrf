@@ -1,0 +1,32 @@
+name: SideloadlyRefresher
+options:
+  bundleIdPrefix: com.tonapp.sideloadlyrefresher
+  deploymentTarget:
+    iOS: "16.0"
+
+targets:
+  SideloadlyRefresher:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    info:
+      path: App/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIBackgroundModes:
+          - fetch
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.tonapp.refresh
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tonapp.sideloadlyrefresher
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+    dependencies:
+      - package: AppDependencies
+
+packages:
+  AppDependencies:
+    path: vendor/AppDependencies
