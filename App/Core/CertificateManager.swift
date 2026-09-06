@@ -1,78 +1,68 @@
 import Foundation
 import SideSign
+import AnisetteKit
 
-/// Régénère un certificat + provisioning profile via SideSign, qui embarque
-/// désormais TOUT ce qu'il fallait avant chercher en Rust (apple-private-apis) :
-/// - `DeveloperPortal` : appels developer.apple.com (Swift pur)
-/// - `AnisetteKit.LocalAnisetteProvider` : génère les headers anisette EN LOCAL
-///   sur l'iPhone (pas besoin de serveur Anisette externe !)
+/// Régénère certificat + provisioning profiles via SideSign.DeveloperPortal.
 ///
-/// VRAI PRÉREQUIS À RÉGLER TOI-MÊME (je ne peux pas te les fournir, ce sont des
-/// binaires propriétaires Apple) : LocalAnisetteProvider a besoin de deux
-/// bibliothèques — `libstoreservicescore.so` et `libCoreADI.so` — placées dans
-/// un dossier accessible à l'app. C'est la même contrainte que tous les projets
-/// "anisette-v3" (généralement extraites d'une installation iTunes/iCloud pour
-/// Windows, ou trouvées via la communauté SideStore — cherche "anisette libraries
-/// ADI" dans leur Discord/wiki, je ne peux pas les héberger ni te dire où les
-/// obtenir précisément).
+/// Pour l'anisette (headers requis par l'auth Apple), on utilise le mode
+/// `.remote(server:)` de `AnisetteDataProvider` — pointe vers un serveur
+/// communautaire public de la liste officielle SideStore
+/// (github.com/SideStore/anisette-servers/blob/main/servers.json).
+/// AVANTAGE : aucune bibliothèque Apple à récupérer toi-même.
+/// COMPROMIS À CONNAÎTRE : ce serveur tiers reçoit indirectement des données
+/// liées à ton compte Apple ID pendant l'auth (comme AltServer/SideStore
+/// eux-mêmes le font par défaut) — choisis un serveur de la liste officielle,
+/// pas un serveur inconnu.
 final class CertificateManager {
     static let shared = CertificateManager()
 
     enum CertError: Error, LocalizedError {
-        case librariesNotConfigured
         case notAuthenticated
         case noTeamFound
-        case existingCertificateMustBeRevoked
+        case anisetteFailed(Error)
 
         var errorDescription: String? {
             switch self {
-            case .librariesNotConfigured: return "Bibliothèques ADI (libstoreservicescore/libCoreADI) introuvables — voir commentaires du fichier."
             case .notAuthenticated: return "Authentification Apple ID échouée."
             case .noTeamFound: return "Aucune équipe développeur trouvée sur ce compte."
-            case .existingCertificateMustBeRevoked: return "Un certificat existant doit être révoqué d'abord (compte gratuit = 1 seul certificat actif)."
+            case .anisetteFailed(let err): return "Échec de génération anisette : \(err.localizedDescription)"
             }
         }
     }
 
     private let portal = DeveloperPortal.shared
+    private let anisetteProvider = AnisetteDataProvider.shared
 
-    /// Session obtenue après authenticate() réussi — à persister/rafraîchir
-    /// selon la durée de vie réelle du token (à vérifier dans Models/Session.swift).
+    /// Choisis un serveur dans la liste officielle : github.com/SideStore/anisette-servers
+    var anisetteServerURL = URL(string: "https://ani.npeg.us")!
+
     var currentSession: Session?
 
-    /// Dossier où tu dois placer les deux .so mentionnés plus haut, ex:
-    /// Documents/ADILibraries/ dans le sandbox de l'app (à choisir toi-même).
-    var adiLibraryDirectory: URL?
-
-    private func makeAnisetteProvider() throws -> LocalAnisetteProvider {
-        guard let libDir = adiLibraryDirectory,
-              LocalAnisetteProvider.validateLibrariesExist(at: libDir) else {
-            throw CertError.librariesNotConfigured
-        }
-        let provisioningDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("anisette_provisioning")
-        try? FileManager.default.createDirectory(at: provisioningDir, withIntermediateDirectories: true)
-
-        return try LocalAnisetteProvider(
-            provisioningDir: provisioningDir,
-            libraryDirectoryResolver: { libDir }
-        )
-    }
-
-    /// Authentifie avec l'Apple ID (2FA géré via verificationHandler, à brancher
-    /// sur une UI de saisie de code dans l'app).
+    /// Authentifie avec l'Apple ID. `verificationHandler` doit être branché sur
+    /// une UI qui demande le code 2FA à l'utilisateur et le retourne.
     func authenticate(
         appleID: String,
         password: String,
         verificationHandler: DeveloperPortal.VerificationHandler? = nil
     ) async throws -> AuthSession {
-        let anisetteProvider = try makeAnisetteProvider()
-        let anisetteData = try await anisetteProvider.getHeaders(identifier: UUID())
-        // NOTE: `authenticate` attend un `AnisetteData`, pas juste des headers bruts —
-        // à adapter selon la structure exacte exposée par la version de SideSign
-        // que tu auras réellement liée (vérifie Models/AnisetteData.swift pour le
-        // constructeur exact au moment de la compilation).
-        fatalError("Adapter la conversion headers → AnisetteData selon la version exacte de SideSign liée")
+        await anisetteProvider.setMode(.remote(server: anisetteServerURL))
+
+        let (anisetteData, _): (AnisetteData, Data?)
+        do {
+            anisetteData = try await anisetteProvider.fetchAnisetteData()
+        } catch {
+            throw CertError.anisetteFailed(error)
+        }
+
+        let session = try await portal.authenticate(
+            appleID: appleID,
+            password: password,
+            anisetteData: anisetteData,
+            xcodeVersion: "16.0",
+            verificationHandler: verificationHandler
+        )
+        currentSession = session
+        return session
     }
 
     func regenerateCertificateIfNeeded(session: Session, bundleIdentifiers: [String]) async throws -> SigningBundle {

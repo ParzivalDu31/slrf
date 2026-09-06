@@ -23,14 +23,20 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tonapp.sideloadlyrefresher
         TARGETED_DEVICE_FAMILY: "1,2"
-        SWIFT_VERSION: "6.0"
+        SWIFT_VERSION: "5"
+        SWIFT_STRICT_CONCURRENCY: minimal
     dependencies:
       - package: Minimuxer
       - package: SideSign
+      - package: AnisetteKit
+        product: AnisetteKit
 
 packages:
   Minimuxer:
     path: vendor/minimuxer
   SideSign:
     url: https://github.com/SideStore/SideSign.git
+    branch: main
+  AnisetteKit:
+    url: https://github.com/mahee96/AnisetteKit.git
     branch: main

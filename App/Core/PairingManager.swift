@@ -1,7 +1,7 @@
 import Foundation
 import Minimuxer
 
-final class PairingManager {
+final class PairingManager: @unchecked Sendable {
     static let shared = PairingManager()
 
     enum PairingError: Error, LocalizedError {
@@ -57,7 +57,7 @@ final class PairingManager {
             throw PairingError.startFailed(error)
         }
 
-        let readyResult = await Minimuxer.shared().core.isReady(withDDIMountCheck: false)
+        let readyResult = await Minimuxer.shared().core.isReady(withNetworkCheck: true, withDDIMountCheck: false)
         switch readyResult {
         case .success(true):
             return
@@ -74,9 +74,5 @@ final class PairingManager {
 
     func currentConnectionMode() async -> DeviceConnectionMode {
         await Minimuxer.shared().core.getConnectionMode()
-    }
-
-    func startNetworkObserver() async {
-        _ = await Minimuxer.shared().network.start()
     }
 }

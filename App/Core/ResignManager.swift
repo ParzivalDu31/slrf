@@ -1,9 +1,6 @@
 import Foundation
 import SideSign
 
-/// Re-signe un bundle .app avec SideSign (github.com/SideStore/SideSign) —
-/// remplace AltSign, aucune dépendance OpenSSL (utilise swift-crypto officiel
-/// d'Apple), donc plus de conflit de target avec RemotePairingKit/minimuxer.
 final class ResignManager {
     static let shared = ResignManager()
 
@@ -19,16 +16,18 @@ final class ResignManager {
         }
     }
 
-    /// Re-signe le bundle `.app` de `app.sourceBundlePath` avec les provisioning
-    /// profiles fournis (un par exécutable/extension du bundle, générés par
-    /// CertificateManager). Retourne l'URL du bundle signé.
-    func resign(_ app: TrackedApp, provisioningProfiles: [ProvisioningProfile]) async throws -> URL {
+    func resign(
+        _ app: TrackedApp,
+        team: Team,
+        keyStore: KeyStore,
+        provisioningProfiles: [ProvisioningProfile]
+    ) async throws -> URL {
         guard let sourcePath = app.sourceBundlePath,
               FileManager.default.fileExists(atPath: sourcePath) else {
             throw ResignError.sourceBundleMissing
         }
 
-        let signer = AppBundleSigner()
+        let signer = AppBundleSigner(team: team, keyStore: keyStore)
         let appURL = URL(fileURLWithPath: sourcePath)
 
         do {

@@ -63,7 +63,12 @@ final class RefreshCoordinator {
             for app in toRefresh {
                 do {
                     let profilesForApp = signingBundle.profiles.filter { $0.bundleIdentifier == app.bundleIdentifier }
-                    let resignedBundle = try await ResignManager.shared.resign(app, provisioningProfiles: profilesForApp)
+                    let resignedBundle = try await ResignManager.shared.resign(
+                        app,
+                        team: signingBundle.team,
+                        keyStore: signingBundle.keyStore,
+                        provisioningProfiles: profilesForApp
+                    )
 
                     try await InstallManager.shared.install(
                         resignedIPAURL: resignedBundle,
