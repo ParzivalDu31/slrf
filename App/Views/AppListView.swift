@@ -4,6 +4,7 @@ struct AppListView: View {
     @ObservedObject var registry = AppRegistry.shared
     @State private var isRefreshing = false
     @State private var showAddSheet = false
+    @State private var showSettingsSheet = false
     @State private var lastError: String?
 
     var body: some View {
@@ -18,11 +19,15 @@ struct AppListView: View {
                     }
                 }
             }
-            .navigationTitle("Apps Sideloadly")
-            .toolbar {
+            .navigationTitle("Apps Sideloadlyer, allowedContetoolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showAddSheet = true } label: {
-                        Image(systemName: "plus")
+                    HStack {
+                        Button { showSettingsSheet = true } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        Button { showAddSheet = true } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -40,6 +45,9 @@ struct AppListView: View {
             }
             .sheet(isPresented: $showAddSheet) {
                 AddAppView()
+            }
+            .sheet(isPresented: $showSettingsSheet) {
+                SettingsView()
             }
             .alert("Erreur", isPresented: .constant(lastError != nil), actions: {
                 Button("OK") { lastError = nil }
