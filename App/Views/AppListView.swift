@@ -19,7 +19,8 @@ struct AppListView: View {
                     }
                 }
             }
-            .navigationTitle("Apps Sideloadlyer, allowedContetoolbar {
+            .navigationTitle("Apps Sideloadly")
+            .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack {
                         Button { showSettingsSheet = true } label: {
