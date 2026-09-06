@@ -47,22 +47,22 @@ final class CertificateManager {
     ) async throws -> AuthSession {
         await anisetteProvider.setMode(.remote(server: anisetteServerURL))
 
-        let (anisetteData, _): (AnisetteData, Data?)
+        let anisetteResult: (data: AnisetteData, newAdiBlob: Data?)
         do {
-            anisetteData = try await anisetteProvider.fetchAnisetteData()
+            anisetteResult = try await anisetteProvider.fetchAnisetteData()
         } catch {
             throw CertError.anisetteFailed(error)
         }
 
-        let session = try await portal.authenticate(
+        let authSession = try await portal.authenticate(
             appleID: appleID,
             password: password,
-            anisetteData: anisetteData,
+            anisetteData: anisetteResult.data,
             xcodeVersion: "16.0",
             verificationHandler: verificationHandler
         )
-        currentSession = session
-        return session
+        currentSession = authSession.session
+        return authSession
     }
 
     func regenerateCertificateIfNeeded(session: Session, bundleIdentifiers: [String]) async throws -> SigningBundle {
