@@ -37,6 +37,20 @@ final class CertificateManager {
     var anisetteServerURL = URL(string: "https://ani.npeg.us")!
 
     var currentSession: Session?
+    /// Rempli par fetchCurrentTeam() juste après login, sans déclencher la
+    /// révocation/création de certificat (contrairement à regenerateCertificateIfNeeded).
+    var currentTeam: Team?
+
+    /// Récupère juste le Team ID du compte connecté, pour la détection auto
+    /// des apps (AppDiscoveryService), sans toucher aux certificats.
+    func fetchCurrentTeam() async throws -> Team {
+        guard let session = currentSession else { throw CertError.notAuthenticated }
+        let account = try await portal.fetchAccount(session: session)
+        let teams = try await portal.fetchTeams(for: account, session: session)
+        guard let team = teams.first else { throw CertError.noTeamFound }
+        currentTeam = team
+        return team
+    }
 
     /// Authentifie avec l'Apple ID. `verificationHandler` doit être branché sur
     /// une UI qui demande le code 2FA à l'utilisateur et le retourne.
