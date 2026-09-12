@@ -31,7 +31,7 @@ final class CertificateManager {
     }
 
     private let portal = DeveloperPortal.shared
-    private let anisetteProvider = AnisetteDataProvider.shared
+    private let anisetteProvider = AnisetteDataManager.shared
 
     /// Choisis un serveur dans la liste officielle : github.com/SideStore/anisette-servers
     var anisetteServerURL = URL(string: "https://ani.npeg.us")!
@@ -59,11 +59,11 @@ final class CertificateManager {
         password: String,
         verificationHandler: DeveloperPortal.VerificationHandler? = nil
     ) async throws -> AuthSession {
-        await anisetteProvider.setMode(.remote(server: anisetteServerURL))
+        anisetteProvider.setMode(.remote(server: anisetteServerURL))
 
         let anisetteResult: (data: AnisetteData, newAdiBlob: Data?)
         do {
-            anisetteResult = try await anisetteProvider.fetchAnisetteData()
+            anisetteResult = try await anisetteProvider.fetchAnisetteData(identifier: UUID())
         } catch {
             throw CertError.anisetteFailed(error)
         }
