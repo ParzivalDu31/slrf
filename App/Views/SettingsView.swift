@@ -108,7 +108,11 @@ struct SettingsView: View {
                 Button("Valider") { auth.submitCode() }
                 Button("Annuler", role: .cancel) { auth.cancelTwoFactor() }
             } message: {
-                Text("Entre le code de vérification envoyé par Apple.")
+                if let error = auth.twoFactorErrorMessage {
+                    Text("⚠️ \(error)\n\nEntre le nouveau code de vérification.")
+                } else {
+                    Text("Entre le code de vérification envoyé par Apple.")
+                }
             }
         }
     }

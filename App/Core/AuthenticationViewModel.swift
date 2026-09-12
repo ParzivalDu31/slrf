@@ -18,6 +18,13 @@ final class AuthenticationViewModel: ObservableObject {
     @Published var pendingCodeRequest: TwoFactorRequest?
     @Published var codeInput: String = ""
 
+    /// Message d'erreur d'Apple si une tentative de code précédente a échoué
+    /// (ex: "code incorrect") — affiché dans l'UI pour comprendre pourquoi
+    /// ça redemande, plutôt que de laisser croire à une boucle sans raison.
+    var twoFactorErrorMessage: String? {
+        pendingCodeRequest?.error
+    }
+
     private var pendingContinuation: CheckedContinuation<TwoFactorResponse, Error>?
 
     func login() async {
@@ -63,7 +70,9 @@ final class AuthenticationViewModel: ObservableObject {
         guard let continuation = pendingContinuation else { return }
         pendingContinuation = nil
         pendingCodeRequest = nil
-        let code = codeInput
+        // Trim : le clavier iOS peut ajouter un espace/saut de ligne selon
+        // le mode de saisie, ce qui ferait échouer silencieusement le code.
+        let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
         codeInput = ""
         continuation.resume(returning: .verificationCode(code))
     }
